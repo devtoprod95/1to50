@@ -11,6 +11,33 @@
     const nicknameInput = document.getElementById('nickname-input');
     const saveButton = document.getElementById('save-button');
 
+    // 디바이스 타입 감지 (모바일/태블릿 vs 데스크톱)
+    const DeviceDetector = {
+        isMobile: function() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   (window.innerWidth <= 768);
+        },
+        isIOS: function() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent);
+        },
+        init: function() {
+            if (this.isMobile()) {
+                document.body.classList.add('mobile-device');
+                
+                // iOS에서 300ms 지연 제거를 위한 meta 태그 확인 및 추가
+                if (this.isIOS() && !document.querySelector('meta[name="viewport"][content*="user-scalable=no"]')) {
+                    const viewportMeta = document.createElement('meta');
+                    viewportMeta.name = 'viewport';
+                    viewportMeta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
+                    document.head.appendChild(viewportMeta);
+                }
+                
+                return true;
+            }
+            return false;
+        }
+    };
+
     // 게임 컨트롤러 객체 - 게임 상태와 관련 기능 관리
     const GameController = {
         currentNumber: 1,            // 현재 클릭해야 할 숫자
@@ -26,6 +53,7 @@
         hintCell: null,              // 현재 힌트가 표시된 셀
         hintTimer: null,             // 힌트 타이머
         finalTime: 0,                // 최종 게임 완료 시간
+        isMobileDevice: false,       // 모바일 디바이스 여부
         
         // 게임 초기화
         init: function() {
@@ -33,6 +61,9 @@
             this.isRunning = false;
             this.lastActionTime = Date.now();
             this.mistakeCount = 0;
+            
+            // 디바이스 타입 감지
+            this.isMobileDevice = DeviceDetector.init();
             
             // 기존 타이머 제거
             this.stopTimer();
@@ -128,11 +159,7 @@
         
         // 그리드 셀 정리 (메모리 관리)
         cleanupGrid: function() {
-            // 모든 이벤트 리스너 제거
-            const cells = gameGrid.querySelectorAll('.number-cell');
-            for (let i = 0; i < cells.length; i++) {
-                cells[i].onclick = null;
-            }
+            // 그리드 콘텐츠 초기화 (이벤트 핸들러는 이벤트 위임으로 관리됨)
             gameGrid.innerHTML = '';
         },
         
@@ -148,31 +175,38 @@
                 fragment.appendChild(cell);
             }
             
-            // 기존 이벤트 리스너 제거
-            if (this.gridClickListener) {
-                gameGrid.removeEventListener('click', this.gridClickListener);
-            }
-            
-            // 그리드에 한 번만 이벤트 리스너 추가 (이벤트 위임)
-            this.gridClickListener = this.handleGridClick.bind(this);
-            gameGrid.addEventListener('click', this.gridClickListener);
-            
             gameGrid.innerHTML = '';
             gameGrid.appendChild(fragment);
         },
         
-        // 그리드 클릭 처리 - 이벤트 위임 구현
-        handleGridClick: function(event) {
-            const cell = event.target.closest('.number-cell');
-            if (!cell) return; // 셀이 아닌 곳 클릭 시 무시
+        // 셀 클릭/터치 처리 (이벤트 위임용 핸들러)
+        handleCellInteraction: function(event) {
+            // 모바일에서 click 이벤트 중복 방지
+            if (event.type === 'click' && this.isMobileDevice) {
+                return;
+            }
             
-            this.handleCellClick(cell, event);
-        },
-        
-        // 셀 클릭 처리
-        handleCellClick: function(cell, event) {
+            // 이벤트 전파 중지 (이벤트 버블링 방지)
             event.stopPropagation();
-
+            
+            // 이벤트 타겟 확인 (터치 이벤트의 경우 터치 위치 요소 찾기)
+            let targetElement;
+            
+            if (event.type === 'touchend') {
+                // 터치 이벤트의 경우 터치 위치의 요소 찾기
+                event.preventDefault(); // 300ms 지연 방지
+                
+                const touch = event.changedTouches[0];
+                targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+            } else {
+                // 일반 클릭 이벤트
+                targetElement = event.target;
+            }
+            
+            // 셀 요소 찾기 (직접 클릭한 요소가 아닐 수 있음)
+            const cell = targetElement.closest('.number-cell');
+            if (!cell) return;
+            
             const clickedNumber = parseInt(cell.dataset.number);
             
             // 유효하지 않은 클릭 무시
@@ -228,7 +262,6 @@
                     this.makeEmptyCell(cell);
                 }
                 
-                
                 // 게임 완료 확인
                 if (wasGameCompleted) {
                     this.gameCompleted();
@@ -259,8 +292,7 @@
             setTimeout(() => {
                 cell.classList.add('empty');
                 cell.textContent = '';
-                cell.dataset.number = '-1';
-                cell.onclick = null;  // 이벤트 핸들러 제거
+                cell.dataset.number = '-1'; 
             }, 100);
         },
         
@@ -283,10 +315,10 @@
             }, 80);
         },
         
-        // 4. 다음 숫자 표시 애니메이션 최적화
+        // 다음 숫자 표시 애니메이션 최적화
         updateNextDisplay: function() {
             // 애니메이션 시간 단축
-            const transitionTime = '0.2s'; // 0.25s에서 0.2s로 단축
+            const transitionTime = '0.15s'; // 더 빠른 전환을 위해 0.15s로 단축
             
             // 변수에 새 값 저장
             const newNumber = this.currentNumber;
@@ -303,7 +335,7 @@
             setTimeout(() => {
                 nextDotsElement.style.transform = 'translateX(-20px)';
                 nextDotsElement.style.opacity = '0';
-            }, 30); // 50ms에서 30ms로 단축
+            }, 20); // 더 빠른 반응을 위해 20ms로 단축
             
             // 새 값을 준비 (화면 바깥 오른쪽에서 대기) - 지연 단축
             setTimeout(() => {
@@ -335,8 +367,8 @@
                 setTimeout(() => {
                     nextDotsElement.style.transform = 'translateX(0)';
                     nextDotsElement.style.opacity = '1';
-                }, 40); // 80ms에서 40ms로 단축
-            }, 180); // 250ms에서 180ms로 단축
+                }, 30); // 더 빠른 반응을 위해 30ms로 단축
+            }, 120); // 더 빠른 반응을 위해 120ms로 단축
         },
         
         // 게임 완료 처리
@@ -361,8 +393,6 @@
             
             // 셀마다 지연시간을 다르게 해서 순차적으로 사라지는 효과
             for (let i = 0; i < cells.length; i++) {
-                cells[i].onclick = null;
-                
                 // 랜덤한 딜레이로 셀 페이드아웃 (시각적 효과)
                 const delay = Math.random() * 300;
                 setTimeout(() => {
@@ -385,9 +415,6 @@
                 resultTimeElement.textContent = this.formatTime(this.finalTime);
             }
             
-            // 닉네임 입력 필드 초기화 및 포커스
-            // nicknameInput.value = '';
-            
             // 모달 표시 (애니메이션과 함께)
             resultModal.classList.add('active');
             
@@ -409,82 +436,11 @@
             }, 300);
         },
 
-        // 1. 다음 숫자 전환 애니메이션 업데이트 - 오른쪽에서 왼쪽으로 전환되는 효과
-        updateNextDisplay: function() {
-            // 변수에 새 값 저장
-            const newNumber = this.currentNumber;
-            const newDots = this.currentNumber < 50 ? (this.currentNumber + 1) + '...' : '';
-            
-            // 현재 값을 오른쪽으로 슬라이드하여 사라지게 하기
-            nextNumberElement.style.transition = 'transform 0.25s ease-out, opacity 0.25s ease-out';
-            nextDotsElement.style.transition = 'transform 0.25s ease-out, opacity 0.25s ease-out';
-            
-            nextNumberElement.style.transform = 'translateX(-20px)';
-            nextNumberElement.style.opacity = '0';
-            
-            // next dots는 약간 지연시켜 연쇄적으로 이동
-            setTimeout(() => {
-                nextDotsElement.style.transform = 'translateX(-20px)';
-                nextDotsElement.style.opacity = '0';
-            }, 50);
-            
-            // 새 값을 준비 (화면 바깥 오른쪽에서 대기)
-            setTimeout(() => {
-                // 트랜지션 일시 중지
-                nextNumberElement.style.transition = 'none';
-                nextDotsElement.style.transition = 'none';
-                
-                // 새 텍스트로 업데이트
-                nextNumberElement.textContent = newNumber;
-                nextDotsElement.textContent = newDots;
-                
-                // 오른쪽에 배치
-                nextNumberElement.style.transform = 'translateX(30px)';
-                nextDotsElement.style.transform = 'translateX(30px)';
-                
-                // 강제 리플로우
-                void nextNumberElement.offsetWidth;
-                void nextDotsElement.offsetWidth;
-                
-                // 트랜지션 다시 활성화
-                nextNumberElement.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
-                nextDotsElement.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
-                
-                // 넘버 요소가 먼저 들어오도록
-                nextNumberElement.style.transform = 'translateX(0)';
-                nextNumberElement.style.opacity = '1';
-                
-                // 점 텍스트는 약간 지연되어 따라오도록
-                setTimeout(() => {
-                    nextDotsElement.style.transform = 'translateX(0)';
-                    nextDotsElement.style.opacity = '1';
-                }, 80);
-            }, 250);
-        },
-
-        // 저장 버튼 - 빈 값 체크 및 알림 추가
+        // 저장 버튼
         saveResult: function() {
             // 닉네임 가져오기
             const nickname = nicknameInput.value.trim();
             
-            // 닉네임이 비어있는지 확인
-            // if (!nickname) {
-            //     // 경고 효과 적용
-            //     nicknameInput.style.boxShadow = '0 0 0 2px #ff5252';
-            //     nicknameInput.placeholder = '닉네임을 입력해주세요!';
-                
-            //     // 입력 필드 흔들림 애니메이션
-            //     nicknameInput.classList.add('error');
-            //     setTimeout(() => {
-            //         nicknameInput.classList.remove('error');
-            //     }, 400);
-                
-            //     // 입력 필드에 포커스
-            //     nicknameInput.focus();
-                
-            //     return; // 저장 취소
-            // }
-
             if (nickname) {
                 // 저장 버튼 비활성화 (중복 제출 방지)
                 saveButton.disabled = true;
@@ -531,7 +487,7 @@
             // requestAnimationFrame 사용으로 더 부드러운 업데이트
             let lastTimerUpdate = 0;
             let lastFormattedTime = '';
-            const updateFrequency = 30; // 60ms에서 30ms로 업데이트 빈도 높임
+            const updateFrequency = 16; // 더 부드러운 업데이트를 위해 16ms로 설정 (약 60fps)
             
             const updateTimer = function(timestamp) {
                 if (!self.isRunning) return;
@@ -554,21 +510,6 @@
             };
             
             requestAnimationFrame(updateTimer);
-        },
-
-        // 즉각적인 이벤트 응답을 위한 패시브 이벤트 리스너 설정 함수
-        setupPassiveEventListeners: function() {
-            // 터치 이벤트 성능 최적화
-            const passiveOptions = { passive: true };
-            
-            // 게임 그리드에 터치 이벤트 최적화 적용
-            gameGrid.addEventListener('touchstart', function(e) {
-                // 터치 이벤트 처리
-            }, passiveOptions);
-            
-            gameGrid.addEventListener('touchend', function(e) {
-                // 터치 종료 이벤트 처리
-            }, passiveOptions);
         },
         
         // 타이머 정지
@@ -595,28 +536,85 @@
         }
     };
 
-    // 이벤트 핸들러 설정
+    // 이벤트 핸들러 설정 - 모바일 최적화 추가
     function setupEventListeners() {
+        const isMobile = DeviceDetector.isMobile();
+        
         // 더블 탭 확대 방지
         document.addEventListener('dblclick', function(e) {
             e.preventDefault();
         });
         
-        // 전체 문서에 클릭 이벤트 리스너 추가
-        document.addEventListener('click', function(e) {
-            // 숫자 셀 외부를 클릭한 경우에도 실수로 간주
-            if (!e.target.classList.contains('number-cell') && GameController.isRunning) {
-                GameController.mistakeCount++;
+        // 모바일 디바이스 터치 이벤트 최적화
+        if (isMobile) {
+            // 터치 이벤트 처리 (passive: false로 preventDefault 허용)
+            gameGrid.addEventListener('touchend', function(e) {
+                GameController.handleCellInteraction(e);
+            }, { passive: false });
+            
+            // 게임 그리드 외부 터치 처리
+            document.addEventListener('touchend', function(e) {
+                // 이벤트 전파 방지
+                e.stopPropagation();
                 
-                // 실수 임계값 도달 시 힌트 표시
-                if (GameController.mistakeCount >= GameController.mistakeThreshold) {
-                    GameController.showHint();
-                    GameController.mistakeCount = 0;
+                // 게임 그리드 외부를 터치한 경우
+                const targetElement = document.elementFromPoint(
+                    e.changedTouches[0].clientX, 
+                    e.changedTouches[0].clientY
+                );
+                
+                if (
+                    targetElement && 
+                    !targetElement.closest('.number-cell') && 
+                    !targetElement.closest('#result-modal') && 
+                    GameController.isRunning
+                ) {
+                    GameController.mistakeCount++;
+                    
+                    if (GameController.mistakeCount >= GameController.mistakeThreshold) {
+                        GameController.showHint();
+                        GameController.mistakeCount = 0;
+                    }
                 }
-            }
-        });
+            }, { passive: true });
+            
+            // 모바일용 추가 최적화
+            document.addEventListener('touchmove', function(e) {
+                if (GameController.isRunning) {
+                    e.preventDefault(); // 스크롤 방지
+                }
+            }, { passive: false });
+            
+            // iOS에서 300ms 지연 제거를 위한 빈 touchstart 이벤트
+            gameGrid.addEventListener('touchstart', function() {}, { passive: true });
+        } 
+        // 데스크톱 클릭 이벤트 처리
+        else {
+            // 게임 그리드 클릭 이벤트
+            gameGrid.addEventListener('click', function(e) {
+                GameController.handleCellInteraction(e);
+            });
+            
+            // 전체 문서에 클릭 이벤트 리스너 추가
+            document.addEventListener('click', function(e) {
+                // 숫자 셀 외부를 클릭한 경우에도 실수로 간주
+                if (
+                    !e.target.closest('.number-cell') && 
+                    !e.target.closest('#result-modal') && 
+                    GameController.isRunning
+                ) {
+                    GameController.mistakeCount++;
+                    
+                    // 실수 임계값 도달 시 힌트 표시
+                    if (GameController.mistakeCount >= GameController.mistakeThreshold) {
+                        GameController.showHint();
+                        GameController.mistakeCount = 0;
+                    }
+                }
+            });
+        }
         
-        // 저장 버튼 클릭 이벤트
+        // 저장 버튼 클릭 이벤트 (모바일과 데스크톱 모두 동일하게 처리)
         saveButton.addEventListener('click', function() {
             GameController.saveResult();
         });
@@ -627,6 +625,20 @@
                 GameController.saveResult();
             }
         });
+        
+        // 터치 동작 최적화를 위한 CSS 추가
+        if (isMobile) {
+            const style = document.createElement('style');
+            style.textContent = `
+                * {
+                    touch-action: manipulation;
+                }
+                .number-cell {
+                    -webkit-tap-highlight-color: transparent;
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
     // 페이지 로드 완료 시 초기화
