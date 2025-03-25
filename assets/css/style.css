@@ -58,7 +58,7 @@ body {
     margin: 0 auto 20px auto; /* 가운데 정렬 */
     will-change: transform; /* 렌더링 최적화 */
     position: relative; /* 위치 조정을 위해 추가 */
-    top: 5vh; /* 아래로 이동 (조금 줄임) */
+    top: 0vh; /* 아래로 이동 (조금 줄임) */
     box-shadow: none; /* 기본적으로 그림자 없음 */
     border-radius: 8px; /* 모서리 둥글게 */
 }
