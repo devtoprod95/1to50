@@ -136,30 +136,43 @@
             gameGrid.innerHTML = '';
         },
         
-        // 그리드 생성
+        // 그리드 생성 최적화 - 이벤트 위임 활용
         createGrid: function() {
             const fragment = document.createDocumentFragment();
-            const self = this; // this 참조 저장
             
             for (let i = 0; i < 25; i++) {
                 const cell = document.createElement('div');
                 cell.className = 'number-cell';
                 cell.textContent = this.numbers[i];
                 cell.dataset.number = this.numbers[i];
-                
-                // 이벤트 핸들러에 컨텍스트 바인딩 (클로저 활용)
-                cell.onclick = function(e) { 
-                    self.handleCellClick(this, e);
-                };
-                
                 fragment.appendChild(cell);
             }
             
+            // 기존 이벤트 리스너 제거
+            if (this.gridClickListener) {
+                gameGrid.removeEventListener('click', this.gridClickListener);
+            }
+            
+            // 그리드에 한 번만 이벤트 리스너 추가 (이벤트 위임)
+            this.gridClickListener = this.handleGridClick.bind(this);
+            gameGrid.addEventListener('click', this.gridClickListener);
+            
+            gameGrid.innerHTML = '';
             gameGrid.appendChild(fragment);
+        },
+        
+        // 그리드 클릭 처리 - 이벤트 위임 구현
+        handleGridClick: function(event) {
+            const cell = event.target.closest('.number-cell');
+            if (!cell) return; // 셀이 아닌 곳 클릭 시 무시
+            
+            this.handleCellClick(cell, event);
         },
         
         // 셀 클릭 처리
         handleCellClick: function(cell, event) {
+            event.stopPropagation();
+
             const clickedNumber = parseInt(cell.dataset.number);
             
             // 유효하지 않은 클릭 무시
@@ -182,6 +195,14 @@
                 
                 // 실수 카운트 초기화
                 this.mistakeCount = 0;
+
+                // 숫자 증가 작업 즉시 수행 - 반응성 향상을 위해 애니메이션보다 먼저 처리
+                const wasGameCompleted = this.currentNumber === this.endNumber;
+                if (!wasGameCompleted) {
+                    this.currentNumber++;
+                    // UI 업데이트 - 별도 함수로 분리하여 비동기적으로 실행
+                    setTimeout(() => this.updateNextDisplay(), 0);
+                }
                 
                 // 클릭한 셀 표시와 애니메이션 효과
                 cell.classList.add('correct');
@@ -189,7 +210,7 @@
                 cell.style.transform = 'scale(0.95)';
                 setTimeout(() => {
                     cell.style.transform = 'scale(1)';
-                }, 150);
+                }, 100);
                 
                 // 1-25 숫자 처리
                 if (clickedNumber >= 1 && clickedNumber <= 25) {
@@ -209,12 +230,8 @@
                 
                 
                 // 게임 완료 확인
-                if (this.currentNumber === this.endNumber) {
+                if (wasGameCompleted) {
                     this.gameCompleted();
-                } else {
-                    // 현재 숫자 증가 및 UI 업데이트
-                    this.currentNumber++;
-                    this.updateNextDisplay();
                 }
             } else {
                 // 잘못된 셀 클릭 시 처리
@@ -230,7 +247,7 @@
                 cell.classList.add('error');
                 setTimeout(() => {
                     cell.classList.remove('error');
-                }, 400);
+                }, 200);
             }
         },
         
@@ -262,27 +279,64 @@
                 setTimeout(() => {
                     cell.style.transform = 'scale(1)';
                     cell.style.opacity = '1';
-                }, 50);
-            }, 150);
+                }, 30);
+            }, 80);
         },
         
-        // 다음 숫자 표시 업데이트
+        // 4. 다음 숫자 표시 애니메이션 최적화
         updateNextDisplay: function() {
-            nextNumberElement.classList.add('fade');
+            // 애니메이션 시간 단축
+            const transitionTime = '0.2s'; // 0.25s에서 0.2s로 단축
             
+            // 변수에 새 값 저장
+            const newNumber = this.currentNumber;
+            const newDots = this.currentNumber < 50 ? (this.currentNumber + 1) + '...' : '';
+            
+            // 현재 값을 오른쪽으로 슬라이드하여 사라지게 하기
+            nextNumberElement.style.transition = `transform ${transitionTime} ease-out, opacity ${transitionTime} ease-out`;
+            nextDotsElement.style.transition = `transform ${transitionTime} ease-out, opacity ${transitionTime} ease-out`;
+            
+            nextNumberElement.style.transform = 'translateX(-20px)';
+            nextNumberElement.style.opacity = '0';
+            
+            // next dots는 약간 지연시켜 연쇄적으로 이동 - 지연 단축
             setTimeout(() => {
-                nextNumberElement.textContent = this.currentNumber;
+                nextDotsElement.style.transform = 'translateX(-20px)';
+                nextDotsElement.style.opacity = '0';
+            }, 30); // 50ms에서 30ms로 단축
+            
+            // 새 값을 준비 (화면 바깥 오른쪽에서 대기) - 지연 단축
+            setTimeout(() => {
+                // 트랜지션 일시 중지
+                nextNumberElement.style.transition = 'none';
+                nextDotsElement.style.transition = 'none';
                 
-                if (this.currentNumber < 50) {
-                    nextDotsElement.textContent = (this.currentNumber + 1) + '...';
-                } else {
-                    nextDotsElement.textContent = '';
-                }
+                // 새 텍스트로 업데이트
+                nextNumberElement.textContent = newNumber;
+                nextDotsElement.textContent = newDots;
                 
+                // 오른쪽에 배치
+                nextNumberElement.style.transform = 'translateX(30px)';
+                nextDotsElement.style.transform = 'translateX(30px)';
+                
+                // 강제 리플로우
+                void nextNumberElement.offsetWidth;
+                void nextDotsElement.offsetWidth;
+                
+                // 트랜지션 다시 활성화 - 빠른 애니메이션
+                nextNumberElement.style.transition = `transform ${transitionTime} ease-out, opacity ${transitionTime} ease-out`;
+                nextDotsElement.style.transition = `transform ${transitionTime} ease-out, opacity ${transitionTime} ease-out`;
+                
+                // 넘버 요소가 먼저 들어오도록
+                nextNumberElement.style.transform = 'translateX(0)';
+                nextNumberElement.style.opacity = '1';
+                
+                // 점 텍스트는 약간 지연되어 따라오도록 - 지연 단축
                 setTimeout(() => {
-                    nextNumberElement.classList.remove('fade');
-                }, 50);
-            }, 50);
+                    nextDotsElement.style.transform = 'translateX(0)';
+                    nextDotsElement.style.opacity = '1';
+                }, 40); // 80ms에서 40ms로 단축
+            }, 180); // 250ms에서 180ms로 단축
         },
         
         // 게임 완료 처리
@@ -476,7 +530,8 @@
             
             // requestAnimationFrame 사용으로 더 부드러운 업데이트
             let lastTimerUpdate = 0;
-            const updateFrequency = 60; // ms (약 16.7ms = 60fps)
+            let lastFormattedTime = '';
+            const updateFrequency = 30; // 60ms에서 30ms로 업데이트 빈도 높임
             
             const updateTimer = function(timestamp) {
                 if (!self.isRunning) return;
@@ -487,8 +542,9 @@
                     
                     // 엘리먼트 업데이트 최적화
                     const formattedTime = self.formatTime(elapsedTime);
-                    if (timerElement.textContent !== formattedTime) {
+                    if (lastFormattedTime !== formattedTime) {
                         timerElement.textContent = formattedTime;
+                        lastFormattedTime = formattedTime;
                     }
                     
                     lastTimerUpdate = timestamp;
@@ -498,6 +554,21 @@
             };
             
             requestAnimationFrame(updateTimer);
+        },
+
+        // 즉각적인 이벤트 응답을 위한 패시브 이벤트 리스너 설정 함수
+        setupPassiveEventListeners: function() {
+            // 터치 이벤트 성능 최적화
+            const passiveOptions = { passive: true };
+            
+            // 게임 그리드에 터치 이벤트 최적화 적용
+            gameGrid.addEventListener('touchstart', function(e) {
+                // 터치 이벤트 처리
+            }, passiveOptions);
+            
+            gameGrid.addEventListener('touchend', function(e) {
+                // 터치 종료 이벤트 처리
+            }, passiveOptions);
         },
         
         // 타이머 정지

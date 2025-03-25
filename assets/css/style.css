@@ -119,19 +119,19 @@ body {
     color: #ff9c8a;
 }
 
-/* 게임 그리드 */
+/* 게임 그리드 - 간격 축소로 버튼 크기 확대 */
 .game-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     grid-template-rows: repeat(5, 1fr);
-    gap: 6px; /* 간격을 줄여 버튼 크기 확보 */
+    gap: 4px; /* 6px에서 4px로 감소 - 버튼 크기 확보 */
     flex-grow: 1;
     width: 100%;
     will-change: contents; /* 렌더링 최적화 */
     padding: 2px; /* 내부 여백 추가 */
 }
 
-/* 숫자 버튼 셀 - 3D 효과 추가 */
+/* 숫자 버튼 셀 - 3D 효과 추가 및 반응성 개선 */
 .number-cell {
     background-color: #00293a;
     color: white;
@@ -144,13 +144,15 @@ body {
     width: 100%;
     height: 100%;
     cursor: pointer;
-    transition: all 0.15s ease-in-out;
+    transition: all 0.1s ease-in-out; /* 0.15s에서 0.1s로 단축 - 반응성 향상 */
     will-change: transform, opacity, background-color; /* 렌더링 최적화 */
-    
+    position: relative; /* 확장된 클릭 영역을 위해 추가 */
     /* 3D 효과 추가 */
     box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.3), 
                 inset 0 2px 0 0 rgba(255, 255, 255, 0.1);
     transform: translateY(0);
+    /* 터치 최적화 */
+    touch-action: manipulation;
 }
 
 /* 클릭 시 버튼 눌림 효과 */
@@ -168,10 +170,18 @@ body {
     transform: translateY(2px);
 }
 
-/* 에러 셀 스타일 */
+/* 에러 셀 스타일 - 애니메이션 시간 단축 */
 .number-cell.error {
-    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    animation: shake-fast 0.2s cubic-bezier(.36,.07,.19,.97) both; /* 0.4s에서 0.2s로 단축 */
     background-color: #5a0000;
+}
+
+/* 빠른 에러 애니메이션 - 반응성 향상을 위한 새 애니메이션 */
+@keyframes shake-fast {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-2px, 0, 0); }
+    40%, 60% { transform: translate3d(2px, 0, 0); }
 }
 
 /* 비활성화된 셀 */
@@ -184,13 +194,19 @@ body {
     transform: translateY(2px);
 }
 
-/* 빈 셀 스타일 */
+/* 빈 셀 스타일 - 애니메이션 시간 단축 */
 .number-cell.empty {
     background-color: transparent;
     color: transparent;
     pointer-events: none;
-    animation: fade-out 0.3s ease-in-out forwards;
+    animation: fade-out-fast 0.2s ease-in-out forwards; /* 0.3s에서 0.2s로 단축 */
     box-shadow: none;
+}
+
+/* 빠른 페이드 아웃 애니메이션 */
+@keyframes fade-out-fast {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.8); }
 }
 
 /* 제작자 정보 스타일 */
@@ -410,6 +426,14 @@ body {
     
     .timer {
         font-size: 56px;
+    }
+}
+
+/* 모바일 최적화 - 클릭 영역 확보 */
+@media (max-width: 768px) {
+    .number-cell {
+        min-width: 44px; /* 최소 터치 영역 보장 */
+        min-height: 44px; /* 최소 터치 영역 보장 */
     }
 }
 
