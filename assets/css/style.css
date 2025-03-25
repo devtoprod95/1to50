@@ -1,0 +1,392 @@
+/* 기본 리셋 및 전역 스타일 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent; /* 모바일 탭 하이라이트 제거 */
+    user-select: none; /* 텍스트 선택 방지 */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* 본문 스타일 - 게임 화면 전체 설정 */
+body {
+    background-color: #001a24;
+    display: flex;
+    justify-content: center;
+    align-items: center; /* 세로 중앙 정렬 유지 */
+    min-height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    touch-action: manipulation; /* 모바일 줌 방지 */
+    margin: 0;
+    padding: 0;
+    height: 100vh; /* 전체 높이 사용 */
+}
+
+/* 힌트 애니메이션을 위한 스타일 */
+@keyframes hint-pulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+    70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+}
+
+.hint {
+    animation: hint-pulse 1.5s infinite;
+    background-color: rgba(255, 215, 0, 0.3) !important;
+    z-index: 10;
+}
+
+.timer {
+    font-variant-numeric: tabular-nums; /* 고정폭 숫자 사용 */
+    text-rendering: optimizeSpeed;
+    will-change: contents; /* 브라우저에 변경 알림 */
+}
+
+/* 게임 컨테이너 */
+.game-container {
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 1 / 1.2; /* 세로 비율 설정 */
+    background-color: #001a24;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    padding-bottom: 30px;
+    margin-bottom: 20px;
+    will-change: transform; /* 렌더링 최적화 */
+    position: relative; /* 위치 조정을 위해 추가 */
+    top: 10vh; /* 아래로 이동 */
+}
+
+/* 헤더 영역 (Next, Time Score) */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    margin-bottom: 15px;
+}
+
+/* Next 영역 */
+.next {
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+}
+
+/* 다음 숫자 표시 */
+.next-number {
+    font-size: 48px;
+    color: #808080;
+    margin: 0 10px;
+    transition: all 0.3s ease-in-out;
+    position: relative;
+    overflow: hidden;
+    min-width: 40px;
+    text-align: center;
+}
+
+/* 다음 숫자 전환 효과 */
+.next-number.fade {
+    animation: slide-left 0.3s ease-in-out;
+}
+
+/* 다음 숫자 점 표시 */
+.next-dots {
+    color: #808080;
+    font-size: 24px;
+    transition: all 0.3s ease-in-out;
+    position: relative;
+    overflow: hidden;
+    min-width: 50px;
+}
+
+/* 시간 점수 영역 */
+.time-score {
+    font-size: 24px;
+    text-align: right;
+}
+
+/* 타이머 표시 */
+.timer {
+    font-family: 'Digital', Arial, sans-serif;
+    font-size: 48px;
+    color: #ff9c8a;
+}
+
+/* 게임 그리드 */
+.game-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 6px; /* 간격을 줄여 버튼 크기 확보 */
+    flex-grow: 1;
+    width: 100%;
+    will-change: contents; /* 렌더링 최적화 */
+    padding: 2px; /* 내부 여백 추가 */
+}
+
+/* 숫자 버튼 셀 - 3D 효과 추가 */
+.number-cell {
+    background-color: #00293a;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 10vw;
+    font-weight: bold;
+    border-radius: 5px; /* 약간 더 둥글게 */
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    will-change: transform, opacity, background-color; /* 렌더링 최적화 */
+    
+    /* 3D 효과 추가 */
+    box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.3), 
+                inset 0 2px 0 0 rgba(255, 255, 255, 0.1);
+    transform: translateY(0);
+}
+
+/* 클릭 시 버튼 눌림 효과 */
+.number-cell:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 0 rgba(0, 0, 0, 0.3),
+                inset 0 2px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 클릭된 셀 스타일 */
+.number-cell.correct {
+    background-color: #003f5c;
+    box-shadow: 0 2px 0 0 rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+    transform: translateY(2px);
+}
+
+/* 에러 셀 스타일 */
+.number-cell.error {
+    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    background-color: #5a0000;
+}
+
+/* 비활성화된 셀 */
+.number-cell.disabled {
+    opacity: 0.6;
+    cursor: default;
+    pointer-events: none;
+    box-shadow: 0 2px 0 0 rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+    transform: translateY(2px);
+}
+
+/* 빈 셀 스타일 */
+.number-cell.empty {
+    background-color: transparent;
+    color: transparent;
+    pointer-events: none;
+    animation: fade-out 0.3s ease-in-out forwards;
+    box-shadow: none;
+}
+
+/* 제작자 정보 스타일 */
+.credit {
+    font-size: 14px;
+    color: white;
+    text-align: right;
+    margin-bottom: 10px;
+    padding-right: 10px;
+    letter-spacing: 0.5px;
+    font-weight: 400;
+    transition: color 0.3s ease;
+}
+
+.credit:hover {
+    color: #ff9c8a;
+}
+
+/* 애니메이션 */
+@keyframes fadeInOut {
+    0% { opacity: 0.2; }
+    50% { opacity: 1; }
+    100% { opacity: 0.8; }
+}
+
+@keyframes slide-left {
+    0% { 
+        transform: translateX(20px);
+        opacity: 0;
+    }
+    100% { 
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fade-out {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.8); }
+}
+
+@keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+    40%, 60% { transform: translate3d(3px, 0, 0); }
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 26, 36, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal {
+    background-color: #003f5c;
+    border-radius: 10px;
+    width: 85%;
+    max-width: 400px;
+    padding: 30px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    transform: translateY(30px) scale(0.95);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.modal-overlay.active .modal {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+.modal-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: white;
+}
+
+.modal-time {
+    font-size: 48px;
+    font-weight: bold;
+    margin-bottom: 30px;
+    color: #ff9c8a;
+    font-family: 'Digital', Arial, sans-serif;
+    text-shadow: 0 0 10px rgba(255, 156, 138, 0.3);
+    animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+    0% { text-shadow: 0 0 10px rgba(255, 156, 138, 0.3); }
+    50% { text-shadow: 0 0 20px rgba(255, 156, 138, 0.6); }
+    100% { text-shadow: 0 0 10px rgba(255, 156, 138, 0.3); }
+}
+
+.modal-input {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 25px;
+    border: none;
+    border-radius: 5px;
+    font-size: 18px;
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #001a24;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+/* 에러 상태의 입력 필드 */
+.modal-input.error {
+    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    background-color: rgba(255, 240, 240, 0.95);
+}
+
+.modal-input:focus {
+    outline: none;
+    background-color: white;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-button {
+    background-color: #ff9c8a;
+    color: #001a24;
+    border: none;
+    border-radius: 5px;
+    padding: 15px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.modal-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+    border-radius: 5px;
+}
+
+.modal-button::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background-color: rgba(0,0,0,0.2);
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.modal-button:hover {
+    background-color: #ffb3a3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+}
+
+.modal-button:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 반응형 조정 */
+@media (min-width: 500px) {
+    .number-cell {
+        font-size: 36px;
+    }
+    
+    .modal {
+        padding: 40px;
+    }
+    
+    .modal-time {
+        font-size: 60px;
+    }
+}
