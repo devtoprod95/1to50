@@ -58,7 +58,7 @@ body {
     margin: 0 auto 20px auto; /* 가운데 정렬 */
     will-change: transform; /* 렌더링 최적화 */
     position: relative; /* 위치 조정을 위해 추가 */
-    top: 0vh; /* 아래로 이동 (조금 줄임) */
+    top: -3vh; /* 아래로 이동 (조금 줄임) */
     box-shadow: none; /* 기본적으로 그림자 없음 */
     border-radius: 8px; /* 모서리 둥글게 */
 }
@@ -134,6 +134,7 @@ body {
 /* 숫자 버튼 셀 - 3D 효과 추가 및 반응성 개선 */
 .number-cell {
     background-color: #00293a;
+    aspect-ratio: 1 / 1;
     color: white;
     display: flex;
     justify-content: center;
@@ -432,6 +433,7 @@ body {
 /* 모바일 최적화 - 클릭 영역 확보 */
 @media (max-width: 768px) {
     .number-cell {
+        aspect-ratio: 1 / 1; /* 추가: 모바일에서 세로 비율 더 증가 */
         min-width: 44px; /* 최소 터치 영역 보장 */
         min-height: 44px; /* 최소 터치 영역 보장 */
     }
